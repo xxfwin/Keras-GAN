@@ -14,6 +14,14 @@ import sys
 
 import numpy as np
 
+
+# set memory usage
+import tensorflow as tf 
+from keras.backend.tensorflow_backend import set_session 
+config = tf.ConfigProto() 
+config.gpu_options.per_process_gpu_memory_fraction = 0.3 
+set_session(tf.Session(config=config))
+
 class GAN():
     def __init__(self):
         self.img_rows = 28
@@ -21,6 +29,8 @@ class GAN():
         self.channels = 1
         self.img_shape = (self.img_rows, self.img_cols, self.channels)
         self.latent_dim = 100
+        self.cc = 0
+        self.count = 0
 
         optimizer = Adam(0.0002, 0.5)
 
@@ -89,7 +99,7 @@ class GAN():
 
         return Model(img, validity)
 
-    def train(self, epochs, batch_size=128, sample_interval=50):
+    def train(self, epochs, batch_size=128, sample_interval=50, model_interval=50):
 
         # Load the dataset
         (X_train, _), (_, _) = mnist.load_data()
@@ -137,6 +147,18 @@ class GAN():
             # If at save interval => save generated image samples
             if epoch % sample_interval == 0:
                 self.sample_images(epoch)
+            if epoch % model_interval == 0:
+                self.discriminator.save("checkpoints/d-%d.h5" % (epoch))
+                self.combined.save("checkpoints/g-%d.h5" % (epoch))
+                # if self.cc == 10:
+                    # self.count += 1 
+                    # self.discriminator.save("checkpoints/d-%d.h5" % (self.count))
+                    # self.combined.save("checkpoints/g-%d.h5" % (self.count))
+                    # self.cc = 0
+                # else:
+                    # self.discriminator.save("checkpoints/d-%d.h5" % (self.count))
+                    # self.combined.save("checkpoints/g-%d.h5" % (self.count))
+                    # self.cc += 1
 
     def sample_images(self, epoch):
         r, c = 5, 5
@@ -159,4 +181,4 @@ class GAN():
 
 if __name__ == '__main__':
     gan = GAN()
-    gan.train(epochs=30000, batch_size=32, sample_interval=200)
+    gan.train(epochs=250, batch_size=32, sample_interval=1, model_interval=1)

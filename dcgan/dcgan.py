@@ -7,12 +7,23 @@ from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.convolutional import UpSampling2D, Conv2D
 from keras.models import Sequential, Model
 from keras.optimizers import Adam
+# add checkpoint
+from keras.callbacks import ModelCheckpoint
 
 import matplotlib.pyplot as plt
 
 import sys
 
 import numpy as np
+
+# set memory usage
+import tensorflow as tf 
+from keras.backend.tensorflow_backend import set_session 
+config = tf.ConfigProto() 
+config.gpu_options.per_process_gpu_memory_fraction = 0.3 
+set_session(tf.Session(config=config))
+
+
 
 class DCGAN():
     def __init__(self):
@@ -22,6 +33,8 @@ class DCGAN():
         self.channels = 1
         self.img_shape = (self.img_rows, self.img_cols, self.channels)
         self.latent_dim = 100
+        self.cc = 0
+        self.count = 0
 
         optimizer = Adam(0.0002, 0.5)
 
@@ -103,7 +116,7 @@ class DCGAN():
 
         return Model(img, validity)
 
-    def train(self, epochs, batch_size=128, save_interval=50):
+    def train(self, epochs, batch_size=128, save_interval=50, model_interval=50):
 
         # Load the dataset
         (X_train, _), (_, _) = mnist.load_data()
@@ -130,15 +143,26 @@ class DCGAN():
             noise = np.random.normal(0, 1, (batch_size, self.latent_dim))
             gen_imgs = self.generator.predict(noise)
 
+            # # d check point
+            # filepath="checkpoints/d-{epoch:02d}-{val_acc:.2f}.hdf5"
+            # checkpointd= ModelCheckpoint(filepath, monitor='val_acc', verbose=1, save_best_only=True, mode='max')
+            # callbacks_listd= [checkpointd]
+            
             # Train the discriminator (real classified as ones and generated as zeros)
             d_loss_real = self.discriminator.train_on_batch(imgs, valid)
             d_loss_fake = self.discriminator.train_on_batch(gen_imgs, fake)
             d_loss = 0.5 * np.add(d_loss_real, d_loss_fake)
+            
 
             # ---------------------
             #  Train Generator
             # ---------------------
 
+            # # g check point
+            # filepath="checkpoints/g-{epoch:02d}-{val_acc:.2f}.hdf5"
+            # checkpointg= ModelCheckpoint(filepath, monitor='val_acc', verbose=1, save_best_only=True, mode='max')
+            # callbacks_listg= [checkpointg]
+            
             # Train the generator (wants discriminator to mistake images as real)
             g_loss = self.combined.train_on_batch(noise, valid)
 
@@ -148,6 +172,19 @@ class DCGAN():
             # If at save interval => save generated image samples
             if epoch % save_interval == 0:
                 self.save_imgs(epoch)
+            if epoch % model_interval == 0:
+                self.discriminator.save("checkpoints/d-%d.h5" % (epoch))
+                self.combined.save("checkpoints/g-%d.h5" % (epoch))
+                
+                # if self.cc == 10:
+                    # self.count += 1 
+                    # self.discriminator.save("checkpoints/d-%d.h5" % (self.count))
+                    # self.combined.save("checkpoints/g-%d.h5" % (self.count))
+                    # self.cc = 0
+                # else:
+                    # self.discriminator.save("checkpoints/d-%d.h5" % (self.count))
+                    # self.combined.save("checkpoints/g-%d.h5" % (self.count))
+                    # self.cc += 1
 
     def save_imgs(self, epoch):
         r, c = 5, 5
@@ -170,4 +207,4 @@ class DCGAN():
 
 if __name__ == '__main__':
     dcgan = DCGAN()
-    dcgan.train(epochs=4000, batch_size=32, save_interval=50)
+    dcgan.train(epochs=200, batch_size=128, save_interval=1, model_interval=1)

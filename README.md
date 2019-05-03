@@ -399,3 +399,4 @@ $ python3 wgan_gp.py
 <p align="center">
     <img src="http://eriklindernoren.se/images/imp_wgan.gif" width="640"\>
 </p>
+
